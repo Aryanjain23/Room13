@@ -152,6 +152,9 @@ export class WardenEndingOverlay {
   showGameOver() {
     if (!this.active) return;
     this.clearTimers();
+    if (this.narrator && this.narrator.subtitleOverlay) {
+      this.narrator.subtitleOverlay.setDockLayout('room');
+    }
     if (this.sound) {
       this.sound.playWardenFailureCue();
     }

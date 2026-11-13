@@ -61,7 +61,6 @@ export class SettingsModal {
     const sfxOn = this.sound.enabled && this.sound.sfxEnabled;
     const narratorOn = this.narrator ? this.narrator.narratorEnabled : false;
     const subtitlesOn = this.narrator ? this.narrator.subtitlesEnabled : false;
-    const presentationOn = this.narrator ? this.narrator.presentationMode : false;
 
     const snap = this.puzzleManager.getSnapshot();
     const inGame = snap.phase === 'playing';
@@ -118,18 +117,6 @@ export class SettingsModal {
             <strong id="master-vol-val">${masterPct}%</strong>
           </label>
           <input id="master-vol-slider" type="range" min="0" max="100" value="${masterPct}" class="r13-slider" />
-        </div>
-
-        <div class="settings-section presentation-box">
-          <div class="presentation-row">
-            <div>
-              <div style="font-weight:700;color:#ffe4b5;font-size:15px;">Presentation Mode</div>
-              <div style="font-size:13px;color:#a8a090;">Clean HUD & readable clues for screen recording</div>
-            </div>
-            <button id="settings-presentation-toggle" type="button" class="r13-btn audio-toggle-btn${presentationOn ? ' active' : ''}" aria-pressed="${presentationOn}">
-              ${presentationOn ? 'ON' : 'OFF'}
-            </button>
-          </div>
         </div>
 
         <div class="settings-actions" ${inGame ? '' : 'hidden'}>
@@ -227,15 +214,6 @@ export class SettingsModal {
       this.sound.init();
       this.sound.setMasterVolume(val / 100);
       syncPuzzleSoundFlag();
-    });
-
-    this.el.querySelector('#settings-presentation-toggle').addEventListener('click', () => {
-      this.sound.init();
-      this.sound.playClick();
-      if (this.narrator) {
-        this.narrator.setPresentationMode(!this.narrator.presentationMode);
-      }
-      this.render();
     });
 
     this.el.querySelector('#settings-reset-view').addEventListener('click', () => {

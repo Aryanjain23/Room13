@@ -77,10 +77,6 @@ export function bootRoom13Game(rootElement) {
   subtitleOverlay.mount(shell);
   const narrator = new NarratorManager({ subtitleOverlay, sound });
 
-  const unsubNarrator = narrator.subscribe((nState) => {
-    shell.classList.toggle('presentation-mode', Boolean(nState.presentationMode));
-  });
-
   let gameScene = null;
   let hud = null;
   let inspectionPanel = null;
@@ -667,7 +663,6 @@ export function bootRoom13Game(rootElement) {
     clearTimeout(victoryMusicTimer);
     sound.stopAllGameAudio(0.05);
     narrator.stopAll();
-    unsubNarrator();
     introSequence.clearTimers();
     wardenEnding.hide();
     window.removeEventListener('keydown', onKeyDown);

@@ -1406,24 +1406,26 @@ button {
   padding: 10px 14px;
 }
 
-/* Live Voiceover Subtitles (Compact Top-Left) */
+/* Live Voiceover Subtitles (Compact Top-Left, Below HUD & Modals) */
 .subtitle-overlay {
   position: fixed;
-  z-index: 48;
-  top: calc(64px + env(safe-area-inset-top, 0px));
+  z-index: 20;
+  top: calc(var(--hud-top-bottom, 64px) + 8px);
   left: 14px;
   right: auto;
   bottom: auto;
   transform: translateY(-4px);
   width: fit-content;
-  max-width: min(290px, calc(100vw - 28px));
+  max-width: min(280px, calc(100vw - 445px));
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.2s ease, top 0.2s ease;
 }
 
 .subtitle-overlay.cinematic-pos {
+  z-index: 46;
   top: calc(16px + env(safe-area-inset-top, 0px));
+  max-width: min(290px, calc(100vw - 28px));
 }
 
 .subtitle-overlay.visible {
@@ -1472,7 +1474,7 @@ button {
 
 @media (max-width: 720px) {
   .subtitle-overlay {
-    top: calc(96px + env(safe-area-inset-top, 0px));
+    top: calc(var(--hud-top-bottom, 96px) + 6px);
     left: 12px;
     max-width: min(250px, calc(100vw - 24px));
   }
@@ -1486,6 +1488,7 @@ button {
 
   .subtitle-overlay.cinematic-pos {
     top: calc(70px + env(safe-area-inset-top, 0px));
+    max-width: min(260px, calc(100vw - 24px));
   }
 
   .subtitle-box {
@@ -1495,60 +1498,6 @@ button {
   .subtitle-text {
     font-size: 12px;
   }
-}
-
-/* Presentation / Screen-Recording Mode */
-.presentation-row,
-.presentation-setup-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.presentation-setup-row {
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255, 179, 71, 0.06);
-}
-
-.presentation-setup-row .audio-toggle-btn {
-  min-width: 72px;
-  flex-shrink: 0;
-}
-
-.presentation-box .audio-toggle-btn {
-  min-width: 72px;
-  flex-shrink: 0;
-}
-
-#app-shell.presentation-mode .hud-time-sub,
-#app-shell.presentation-mode .hud-stages-inline {
-  display: none;
-}
-
-#app-shell.presentation-mode .vignette-overlay {
-  opacity: 0.55;
-}
-
-#app-shell.presentation-mode .subtitle-box {
-  background: rgba(4, 6, 12, 0.92);
-  border-color: rgba(255, 179, 71, 0.55);
-  padding: 7px 11px 8px;
-}
-
-#app-shell.presentation-mode .subtitle-text {
-  font-size: 13.5px;
-  font-weight: 600;
-}
-
-#app-shell.presentation-mode .inspect-clue,
-#app-shell.presentation-mode .journal-text,
-#app-shell.presentation-mode .journal-value {
-  font-size: 16.5px;
-  line-height: 1.48;
-  color: #fff6e3;
 }
 
 @media (prefers-reduced-motion: reduce) {

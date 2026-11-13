@@ -119,7 +119,28 @@ export class HUD {
     });
 
     this.setupMobileJoystick();
+    this.setupHudTopObserver();
     this.update(this.puzzleManager.getSnapshot());
+  }
+
+  syncHudTopInset() {
+    const shell = this.root && this.root.parentElement;
+    const topBar = this.root && this.root.querySelector('.hud-top');
+    if (!shell || !topBar || this.root.hidden) return;
+    const rect = topBar.getBoundingClientRect();
+    if (rect.height > 0) {
+      shell.style.setProperty('--hud-top-bottom', `${Math.ceil(rect.bottom)}px`);
+    }
+  }
+
+  setupHudTopObserver() {
+    const topBar = this.root && this.root.querySelector('.hud-top');
+    if (!topBar) return;
+    if (typeof ResizeObserver === 'function') {
+      this.topObserver = new ResizeObserver(() => this.syncHudTopInset());
+      this.topObserver.observe(topBar);
+    }
+    window.addEventListener('resize', () => this.syncHudTopInset());
   }
 
   setupMobileJoystick() {
@@ -174,6 +195,9 @@ export class HUD {
 
   setVisible(visible) {
     this.root.hidden = !visible;
+    if (visible) {
+      window.requestAnimationFrame(() => this.syncHudTopInset());
+    }
   }
 
   showToast(message, durationMs = 3600) {
@@ -250,5 +274,6 @@ export class HUD {
     }
 
     this.hintSystem.update(snapshot);
+    this.syncHudTopInset();
   }
 }

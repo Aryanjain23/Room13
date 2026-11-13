@@ -67,14 +67,13 @@ export class DifficultyModal {
     const activeCfg = getDifficultyConfig(this.selectedDifficulty);
     const defaultMin = Math.round((activeCfg.defaultDurationSeconds || 600) / 60);
     const resolvedSec = this.getResolvedDurationSeconds();
-    const presentationOn = Boolean(this.narrator && this.narrator.presentationMode);
 
     this.el.innerHTML = `
       <div class="r13-modal-card difficulty-card" role="dialog" aria-modal="true" aria-labelledby="diff-title">
         <div class="journal-head">
           <div>
             <h2 id="diff-title">Game Setup</h2>
-            <div class="journal-sub">Choose difficulty mode, timer, and presentation options</div>
+            <div class="journal-sub">Choose difficulty mode and curfew countdown timer</div>
           </div>
           <button id="diff-back-btn" type="button" class="r13-icon-btn">Back</button>
         </div>
@@ -124,16 +123,6 @@ export class DifficultyModal {
             </div>
           </div>
           ${this.errorMsg ? `<div class="puzzle-feedback error" id="timer-error-msg">${this.errorMsg}</div>` : ''}
-        </div>
-
-        <div class="presentation-setup-row">
-          <div>
-            <div style="font-weight:700;color:#ffe4b5;font-size:14px;">Presentation Mode (Hackathon Demo)</div>
-            <div style="font-size:12px;color:#a8a090;">Clean HUD clutter, queued subtitles & live narrator ON</div>
-          </div>
-          <button id="diff-presentation-toggle" type="button" class="r13-btn audio-toggle-btn${presentationOn ? ' active' : ''}" aria-pressed="${presentationOn}">
-            ${presentationOn ? 'ON' : 'OFF'}
-          </button>
         </div>
 
         <button id="diff-start-btn" type="button" class="r13-btn primary" style="width:100%;">
@@ -225,15 +214,6 @@ export class DifficultyModal {
 
     customInput.addEventListener('focus', syncCustomLive);
     customInput.addEventListener('input', syncCustomLive);
-
-    this.el.querySelector('#diff-presentation-toggle').addEventListener('click', () => {
-      this.sound.init();
-      this.sound.playClick();
-      if (this.narrator) {
-        this.narrator.setPresentationMode(!this.narrator.presentationMode);
-      }
-      this.render();
-    });
 
     this.el.querySelector('#diff-start-btn').addEventListener('click', () => {
       this.sound.init();

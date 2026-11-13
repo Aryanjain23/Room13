@@ -56,7 +56,6 @@ export class NarratorManager {
     this.narratorEnabled = true;
     this.subtitlesEnabled = true;
     this.narratorVolume = 0.9;
-    this.presentationMode = false;
     this.paused = false;
 
     this.queue = [];
@@ -96,7 +95,6 @@ export class NarratorManager {
       narratorEnabled: this.narratorEnabled,
       subtitlesEnabled: this.subtitlesEnabled,
       narratorVolume: this.narratorVolume,
-      presentationMode: this.presentationMode,
       speechSupported: this.hasSpeechApi,
       speaking: Boolean(this.currentItem),
       queueLength: this.queue.length,
@@ -165,15 +163,6 @@ export class NarratorManager {
 
   setNarratorVolume(val) {
     this.narratorVolume = Math.max(0, Math.min(1, Number(val)));
-    this.notify();
-  }
-
-  setPresentationMode(enabled) {
-    this.presentationMode = Boolean(enabled);
-    if (this.presentationMode) {
-      this.narratorEnabled = true;
-      this.subtitlesEnabled = true;
-    }
     this.notify();
   }
 
