@@ -1,10 +1,11 @@
 export class Keypad {
-  constructor({ puzzleManager, sound, onDrawerSolved, onDoorSolved, onDoorError }) {
+  constructor({ puzzleManager, sound, onDrawerSolved, onDoorSolved, onDoorError, onWrongPassword }) {
     this.puzzleManager = puzzleManager;
     this.sound = sound;
     this.onDrawerSolved = onDrawerSolved;
     this.onDoorSolved = onDoorSolved;
     this.onDoorError = onDoorError;
+    this.onWrongPassword = onWrongPassword;
     this.feedback = null;
     this.activeType = null; // 'drawer' | 'door' | null
   }
@@ -109,6 +110,9 @@ export class Keypad {
       } else {
         this.sound.playError();
         this.feedback = { type: 'error', text: res.message };
+        if (this.onWrongPassword && !res.gameEnded) {
+          this.onWrongPassword({ type: 'drawer', result: res });
+        }
       }
       this.puzzleManager.notify();
     });
@@ -233,6 +237,9 @@ export class Keypad {
       this.sound.playError();
       this.feedback = { type: 'error', text: res.message };
       if (this.onDoorError) this.onDoorError();
+      if (this.onWrongPassword && !res.gameEnded) {
+        this.onWrongPassword({ type: 'door', result: res });
+      }
     }
     this.puzzleManager.notify();
   }

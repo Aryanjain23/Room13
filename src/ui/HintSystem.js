@@ -1,8 +1,9 @@
 export class HintSystem {
-  constructor(puzzleManager, onShowToast, onSoundClick) {
+  constructor(puzzleManager, onShowToast, onSoundClick, onHintUsed = null) {
     this.puzzleManager = puzzleManager;
     this.onShowToast = onShowToast;
     this.onSoundClick = onSoundClick;
+    this.onHintUsed = onHintUsed;
   }
 
   mount(containerEl) {
@@ -37,6 +38,7 @@ export class HintSystem {
     if (this.onSoundClick) this.onSoundClick();
     const res = this.puzzleManager.requestHint();
     this.onShowToast(res.text, res.available ? 6200 : 3800);
+    if (this.onHintUsed) this.onHintUsed(res);
   }
 
   update(snapshot) {

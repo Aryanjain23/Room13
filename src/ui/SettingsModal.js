@@ -1,6 +1,16 @@
 export class SettingsModal {
-  constructor({ sound, puzzleManager, onResetView, onOpenHow, onChangeDifficulty, onReturnMenu, onPauseChange }) {
+  constructor({
+    sound,
+    narrator = null,
+    puzzleManager,
+    onResetView,
+    onOpenHow,
+    onChangeDifficulty,
+    onReturnMenu,
+    onPauseChange,
+  }) {
     this.sound = sound;
+    this.narrator = narrator;
     this.puzzleManager = puzzleManager;
     this.onResetView = onResetView;
     this.onOpenHow = onOpenHow;
@@ -45,8 +55,14 @@ export class SettingsModal {
     const masterPct = Math.round((this.sound.masterVolume ?? 0.85) * 100);
     const musicPct = Math.round(this.sound.musicVolume * 100);
     const sfxPct = Math.round(this.sound.sfxVolume * 100);
+    const narratorPct = Math.round((this.narrator ? this.narrator.narratorVolume : 0.9) * 100);
+
     const musicOn = this.sound.enabled && this.sound.musicEnabled;
     const sfxOn = this.sound.enabled && this.sound.sfxEnabled;
+    const narratorOn = this.narrator ? this.narrator.narratorEnabled : false;
+    const subtitlesOn = this.narrator ? this.narrator.subtitlesEnabled : false;
+    const presentationOn = this.narrator ? this.narrator.presentationMode : false;
+
     const snap = this.puzzleManager.getSnapshot();
     const inGame = snap.phase === 'playing';
 
@@ -62,6 +78,15 @@ export class SettingsModal {
 
         <div class="settings-section">
           <div class="audio-toggle-row">
+            <button id="settings-narrator-toggle" type="button" class="r13-btn audio-toggle-btn${narratorOn ? ' active' : ''}" aria-pressed="${narratorOn}">
+              Narrator: ${narratorOn ? 'ON' : 'OFF'}
+            </button>
+            <button id="settings-subtitles-toggle" type="button" class="r13-btn audio-toggle-btn${subtitlesOn ? ' active' : ''}" aria-pressed="${subtitlesOn}">
+              Subtitles: ${subtitlesOn ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          <div class="audio-toggle-row">
             <button id="settings-music-toggle" type="button" class="r13-btn audio-toggle-btn${musicOn ? ' active' : ''}" aria-pressed="${musicOn}">
               Music: ${musicOn ? 'ON' : 'OFF'}
             </button>
@@ -70,23 +95,41 @@ export class SettingsModal {
             </button>
           </div>
 
-          <label class="slider-row" for="master-vol-slider">
-            <span>Master Volume</span>
-            <strong id="master-vol-val">${masterPct}%</strong>
+          <label class="slider-row" for="narrator-vol-slider">
+            <span>Narrator Volume</span>
+            <strong id="narrator-vol-val">${narratorPct}%</strong>
           </label>
-          <input id="master-vol-slider" type="range" min="0" max="100" value="${masterPct}" class="r13-slider" />
+          <input id="narrator-vol-slider" type="range" min="0" max="100" value="${narratorPct}" class="r13-slider" />
 
           <label class="slider-row" for="music-vol-slider">
-            <span>Suspense Music Level</span>
+            <span>Music Volume</span>
             <strong id="music-vol-val">${musicPct}%</strong>
           </label>
           <input id="music-vol-slider" type="range" min="0" max="100" value="${musicPct}" class="r13-slider" />
 
           <label class="slider-row" for="sfx-vol-slider">
-            <span>Effects & Clock Level</span>
+            <span>Sound Effects Volume</span>
             <strong id="sfx-vol-val">${sfxPct}%</strong>
           </label>
           <input id="sfx-vol-slider" type="range" min="0" max="100" value="${sfxPct}" class="r13-slider" />
+
+          <label class="slider-row" for="master-vol-slider">
+            <span>Master Volume</span>
+            <strong id="master-vol-val">${masterPct}%</strong>
+          </label>
+          <input id="master-vol-slider" type="range" min="0" max="100" value="${masterPct}" class="r13-slider" />
+        </div>
+
+        <div class="settings-section presentation-box">
+          <div class="presentation-row">
+            <div>
+              <div style="font-weight:700;color:#ffe4b5;font-size:15px;">Presentation Mode</div>
+              <div style="font-size:13px;color:#a8a090;">Clean HUD & readable clues for screen recording</div>
+            </div>
+            <button id="settings-presentation-toggle" type="button" class="r13-btn audio-toggle-btn${presentationOn ? ' active' : ''}" aria-pressed="${presentationOn}">
+              ${presentationOn ? 'ON' : 'OFF'}
+            </button>
+          </div>
         </div>
 
         <div class="settings-actions" ${inGame ? '' : 'hidden'}>
@@ -104,6 +147,24 @@ export class SettingsModal {
       this.sound.setEnabled(anyActive);
       this.puzzleManager.setSoundEnabled(anyActive);
     };
+
+    this.el.querySelector('#settings-narrator-toggle').addEventListener('click', () => {
+      this.sound.init();
+      this.sound.playClick();
+      if (this.narrator) {
+        this.narrator.setNarratorEnabled(!this.narrator.narratorEnabled);
+      }
+      this.render();
+    });
+
+    this.el.querySelector('#settings-subtitles-toggle').addEventListener('click', () => {
+      this.sound.init();
+      this.sound.playClick();
+      if (this.narrator) {
+        this.narrator.setSubtitlesEnabled(!this.narrator.subtitlesEnabled);
+      }
+      this.render();
+    });
 
     this.el.querySelector('#settings-music-toggle').addEventListener('click', () => {
       this.sound.init();
@@ -131,14 +192,12 @@ export class SettingsModal {
       this.render();
     });
 
-    const masterSlider = this.el.querySelector('#master-vol-slider');
-    const masterLabel = this.el.querySelector('#master-vol-val');
-    masterSlider.addEventListener('input', (e) => {
+    const narratorSlider = this.el.querySelector('#narrator-vol-slider');
+    const narratorLabel = this.el.querySelector('#narrator-vol-val');
+    narratorSlider.addEventListener('input', (e) => {
       const val = Number(e.target.value);
-      masterLabel.textContent = `${val}%`;
-      this.sound.init();
-      this.sound.setMasterVolume(val / 100);
-      syncPuzzleSoundFlag();
+      narratorLabel.textContent = `${val}%`;
+      if (this.narrator) this.narrator.setNarratorVolume(val / 100);
     });
 
     const musicSlider = this.el.querySelector('#music-vol-slider');
@@ -159,6 +218,25 @@ export class SettingsModal {
       this.sound.setSfxVolume(val / 100);
     });
     sfxSlider.addEventListener('change', () => this.sound.playClick());
+
+    const masterSlider = this.el.querySelector('#master-vol-slider');
+    const masterLabel = this.el.querySelector('#master-vol-val');
+    masterSlider.addEventListener('input', (e) => {
+      const val = Number(e.target.value);
+      masterLabel.textContent = `${val}%`;
+      this.sound.init();
+      this.sound.setMasterVolume(val / 100);
+      syncPuzzleSoundFlag();
+    });
+
+    this.el.querySelector('#settings-presentation-toggle').addEventListener('click', () => {
+      this.sound.init();
+      this.sound.playClick();
+      if (this.narrator) {
+        this.narrator.setPresentationMode(!this.narrator.presentationMode);
+      }
+      this.render();
+    });
 
     this.el.querySelector('#settings-reset-view').addEventListener('click', () => {
       this.sound.playClick();

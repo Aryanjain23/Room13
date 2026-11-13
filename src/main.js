@@ -2,6 +2,7 @@ import { getRoomObjectMeta } from './data/roomObjects.js';
 import { InventoryManager } from './inventory/InventoryManager.js';
 import { PuzzleManager } from './puzzles/PuzzleManager.js';
 import { SoundManager } from './game/SoundManager.js';
+import { NarratorManager } from './game/NarratorManager.js';
 import { GameScene } from './game/GameScene.js';
 import { HintSystem } from './ui/HintSystem.js';
 import { Keypad } from './ui/Keypad.js';
@@ -14,6 +15,7 @@ import { RoommateDialog } from './ui/RoommateDialog.js';
 import { IntroSequence } from './ui/IntroSequence.js';
 import { VictoryScreen } from './ui/VictoryScreen.js';
 import { WardenEndingOverlay } from './ui/WardenEndingOverlay.js';
+import { SubtitleOverlay } from './ui/SubtitleOverlay.js';
 
 export function bootRoom13Game(rootElement) {
   if (!rootElement) return () => {};
@@ -71,6 +73,13 @@ export function bootRoom13Game(rootElement) {
   const inventory = new InventoryManager();
   const puzzleManager = new PuzzleManager(inventory);
   const sound = new SoundManager();
+  const subtitleOverlay = new SubtitleOverlay();
+  subtitleOverlay.mount(shell);
+  const narrator = new NarratorManager({ subtitleOverlay, sound });
+
+  const unsubNarrator = narrator.subscribe((nState) => {
+    shell.classList.toggle('presentation-mode', Boolean(nState.presentationMode));
+  });
 
   let gameScene = null;
   let hud = null;
@@ -93,7 +102,8 @@ export function bootRoom13Game(rootElement) {
   const hintSystem = new HintSystem(
     puzzleManager,
     (msg, ms) => hud && hud.showToast(msg, ms),
-    () => sound.playClick()
+    () => sound.playClick(),
+    (res) => narrator.narrateHint(res)
   );
 
   const keypad = new Keypad({
@@ -103,6 +113,7 @@ export function bootRoom13Game(rootElement) {
       sound.playDrawerUnlock();
       sound.playClueFound();
       hud.showToast('Drawer unlocked! Torn Drawer Note added to your inventory.', 4500);
+      narrator.narrateDrawerUnlocked();
       if (inspectionPanel && inspectionPanel.isOpen()) {
         inspectionPanel.render(puzzleManager.getSnapshot());
       }
@@ -117,6 +128,7 @@ export function bootRoom13Game(rootElement) {
       sound.stopGameplayMusic(0.12);
       sound.playDoorUnlock();
       hud.showToast('Exit unlocked! Opening Room 13...', 3200);
+      narrator.narrateDoorUnlocked();
       gameScene.syncState(snap);
       clearTimeout(victoryMusicTimer);
       clearTimeout(victoryTimer);
@@ -127,10 +139,15 @@ export function bootRoom13Game(rootElement) {
       victoryTimer = window.setTimeout(() => {
         if (!puzzleManager.escaped) return;
         victoryScreen.show(puzzleManager.getSnapshot());
+        narrator.narrateVictory();
       }, 2150);
     },
     onDoorError: () => {
       if (gameScene) gameScene.flashKeypadError();
+    },
+    onWrongPassword: ({ result }) => {
+      const reason = result && result.lockedByProgress ? result.message : null;
+      narrator.narrateWrongPassword(reason);
     },
   });
 
@@ -150,6 +167,9 @@ export function bootRoom13Game(rootElement) {
   roommateDialog = new RoommateDialog({
     puzzleManager,
     sound,
+    onSpeakLine: (line, topicId) => {
+      narrator.narrateRoommateLine(line, topicId);
+    },
     onClose: () => {
       if (gameScene) gameScene.closeObjectView();
     },
@@ -171,18 +191,24 @@ export function bootRoom13Game(rootElement) {
     onComplete: () => {
       puzzleManager.startGame();
       sound.startGameplayMusic();
+      subtitleOverlay.setDockLayout('room');
       hud.setVisible(true);
       const snap = puzzleManager.getSnapshot();
       hud.showToast(
         `${snap.difficultyLabel} Mode active. Inspect objects around Room 13 or talk to Rohan.`,
         5000
       );
+      narrator.narrateGameStart();
     },
   });
   introSequence.mount(shell);
 
   difficultyModal = new DifficultyModal({
     sound,
+    narrator,
+    onDifficultyPreview: (modeId) => {
+      narrator.narrateDifficulty(modeId);
+    },
     onSelect: (modeId, durationSeconds) => {
       clearTimeout(victoryTimer);
       clearTimeout(victoryMusicTimer);
@@ -191,6 +217,7 @@ export function bootRoom13Game(rootElement) {
       closeAllRoomOverlays();
       hud.setVisible(false);
       sound.stopAllGameAudio(0.08);
+      narrator.stopAll();
       puzzleManager.setDifficulty(modeId, 'intro', durationSeconds);
       if (gameScene) {
         gameScene.resetWarden();
@@ -200,6 +227,7 @@ export function bootRoom13Game(rootElement) {
       introSequence.start(modeId);
     },
     onBack: () => {
+      narrator.stopAll();
       puzzleManager.phase = 'menu';
       puzzleManager.notify();
       menuScreen.classList.remove('off');
@@ -215,6 +243,7 @@ export function bootRoom13Game(rootElement) {
     closeAllRoomOverlays();
     if (settingsModal && settingsModal.isOpen()) settingsModal.close();
     sound.stopAllGameAudio(0.1);
+    narrator.stopAll();
     hud.setVisible(false);
     puzzleManager.reset(false);
     puzzleManager.phase = 'difficulty';
@@ -228,10 +257,12 @@ export function bootRoom13Game(rootElement) {
 
   settingsModal = new SettingsModal({
     sound,
+    narrator,
     puzzleManager,
     onPauseChange: (paused) => {
       if (puzzleManager.phase === 'playing' && !puzzleManager.gameEnded) {
         sound.setPaused(paused);
+        narrator.setPaused(paused);
       }
     },
     onResetView: () => {
@@ -249,6 +280,7 @@ export function bootRoom13Game(rootElement) {
       if (victoryScreen) victoryScreen.hide();
       closeAllRoomOverlays();
       sound.stopAllGameAudio(0.1);
+      narrator.stopAll();
       puzzleManager.reset(false);
       hud.setVisible(false);
       menuScreen.classList.remove('off');
@@ -265,8 +297,10 @@ export function bootRoom13Game(rootElement) {
       closeAllRoomOverlays();
       if (settingsModal && settingsModal.isOpen()) settingsModal.close();
       sound.stopAllGameAudio(0.08);
+      narrator.stopAll();
       puzzleManager.reset(true);
       sound.startGameplayMusic();
+      subtitleOverlay.setDockLayout('room');
       if (gameScene) {
         gameScene.resetWarden();
         gameScene.resetCameraView();
@@ -277,6 +311,7 @@ export function bootRoom13Game(rootElement) {
         `New ${puzzleManager.getSnapshot().difficultyLabel} Mode attempt started.`,
         3500
       );
+      narrator.narrateGameStart();
     },
     () => {
       sound.playClick();
@@ -287,14 +322,17 @@ export function bootRoom13Game(rootElement) {
 
   wardenEnding = new WardenEndingOverlay({
     sound,
+    narrator,
     onRetry: () => {
       clearTimeout(victoryTimer);
       clearTimeout(victoryMusicTimer);
       closeAllRoomOverlays();
       if (settingsModal && settingsModal.isOpen()) settingsModal.close();
       sound.stopAllGameAudio(0.08);
+      narrator.stopAll();
       puzzleManager.reset(true);
       sound.startGameplayMusic();
+      subtitleOverlay.setDockLayout('room');
       if (gameScene) {
         gameScene.resetWarden();
         gameScene.resetCameraView();
@@ -305,6 +343,7 @@ export function bootRoom13Game(rootElement) {
         `New ${puzzleManager.getSnapshot().difficultyLabel} Mode attempt started.`,
         3500
       );
+      narrator.narrateGameStart();
     },
     onMainMenu: () => {
       clearTimeout(victoryTimer);
@@ -312,6 +351,7 @@ export function bootRoom13Game(rootElement) {
       closeAllRoomOverlays();
       if (settingsModal && settingsModal.isOpen()) settingsModal.close();
       sound.stopAllGameAudio(0.08);
+      narrator.stopAll();
       puzzleManager.reset(false);
       if (gameScene) {
         gameScene.resetWarden();
@@ -350,6 +390,7 @@ export function bootRoom13Game(rootElement) {
       if (inspectionPanel && inspectionPanel.isOpen()) inspectionPanel.close();
       if (roommateDialog && roommateDialog.isOpen()) roommateDialog.close();
       journalModal.open(puzzleManager.getSnapshot());
+      narrator.narrateJournalOpened();
     },
     onOpenSettings: () => {
       if (puzzleManager.gameEnded) return;
@@ -400,6 +441,13 @@ export function bootRoom13Game(rootElement) {
       } else if (objectId !== 'notebook') {
         sound.playClick();
       }
+
+      const postSnap = puzzleManager.getSnapshot();
+      narrator.narrateObjectInspection(objectId, postSnap);
+      if (newlyFound) {
+        narrator.narrateClueDiscovered(newlyFound);
+      }
+
       gameScene.inspectObjectView(objMeta);
       inspectionPanel.openObject(objectId);
     },
@@ -563,6 +611,7 @@ export function bootRoom13Game(rootElement) {
         journalModal.close();
       } else {
         journalModal.open(snap);
+        narrator.narrateJournalOpened();
       }
     } else if (!journalModal.isOpen() && (e.key === 'r' || e.key === 'R')) {
       sound.playClick();
@@ -574,7 +623,7 @@ export function bootRoom13Game(rootElement) {
   };
   window.addEventListener('keydown', onKeyDown);
 
-  // Suspense timer, dynamic tension soundtrack, footsteps & warden arrival at 0:00
+  // Suspense timer, dynamic tension soundtrack, footsteps, narrator warnings & warden arrival at 0:00
   const secondInterval = window.setInterval(() => {
     const snap = puzzleManager.getSnapshot();
     if (snap.phase !== 'playing' || snap.gameEnded || settingsModal.isOpen()) return;
@@ -591,9 +640,18 @@ export function bootRoom13Game(rootElement) {
     if (total >= 90 && remaining === midPoint) {
       sound.playWardenFootsteps();
       hud.showToast('Distant footsteps echo down the Block B corridor...', 4000);
-    } else if (total > 30 && remaining === 20) {
+    }
+
+    if (remaining === 60 && total > 60) {
+      sound.playWardenFootsteps();
+      hud.showToast('One minute remaining! The warden could arrive any moment.', 4000);
+      narrator.narrateTimerWarning(60);
+    } else if (remaining === 20) {
       sound.playWardenFootsteps();
       hud.showToast('20 seconds left! The warden’s flashlight sweeps near the stairs.', 3800);
+      narrator.narrateTimerWarning(20);
+    } else if (remaining === 10) {
+      narrator.narrateTimerWarning(10);
     } else if (remaining === 5) {
       sound.playWardenFootsteps();
       hud.showToast('Footsteps stop outside Room 13. Unlock the door now!', 4200);
@@ -608,6 +666,8 @@ export function bootRoom13Game(rootElement) {
     clearTimeout(victoryTimer);
     clearTimeout(victoryMusicTimer);
     sound.stopAllGameAudio(0.05);
+    narrator.stopAll();
+    unsubNarrator();
     introSequence.clearTimers();
     wardenEnding.hide();
     window.removeEventListener('keydown', onKeyDown);

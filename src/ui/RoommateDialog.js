@@ -1,10 +1,11 @@
 import { ROOMMATE_PROFILE, ROOMMATE_DIALOGUE } from '../data/roommateData.js';
 
 export class RoommateDialog {
-  constructor({ puzzleManager, sound, onClose }) {
+  constructor({ puzzleManager, sound, onClose, onSpeakLine = null }) {
     this.puzzleManager = puzzleManager;
     this.sound = sound;
     this.onClose = onClose;
+    this.onSpeakLine = onSpeakLine;
 
     this.currentLine = '';
     this.activeTopicId = null;
@@ -33,6 +34,7 @@ export class RoommateDialog {
     this.currentLine = dlg.greeting;
     this.render(snapshot);
     this.el.hidden = false;
+    if (this.onSpeakLine) this.onSpeakLine(dlg.greeting, 'greeting');
   }
 
   close() {
@@ -76,6 +78,7 @@ export class RoommateDialog {
         this.activeTopicId = topic.id;
         this.currentLine = topic.line;
         this.puzzleManager.recordRoommateTopic(topic.id);
+        if (this.onSpeakLine) this.onSpeakLine(topic.line, topic.id);
       });
       topicsEl.appendChild(btn);
     });

@@ -7,21 +7,25 @@ function formatTime(sec) {
 const WARDEN_LINES = [
   {
     speaker: 'Warden',
+    narratorSpeaker: 'WARDEN',
     text: "So... this is what you've been doing instead of preparing for inspection?",
   },
   {
     speaker: 'You',
+    narratorSpeaker: 'PLAYER',
     text: 'Sir, I can explain!',
   },
   {
     speaker: 'Warden',
+    narratorSpeaker: 'WARDEN',
     text: "Too late. Curfew is over. You're coming with me.",
   },
 ];
 
 export class WardenEndingOverlay {
-  constructor({ sound, onRetry, onMainMenu }) {
+  constructor({ sound, narrator = null, onRetry, onMainMenu }) {
     this.sound = sound;
+    this.narrator = narrator;
     this.onRetry = onRetry;
     this.onMainMenu = onMainMenu;
 
@@ -53,19 +57,26 @@ export class WardenEndingOverlay {
     this.lineIndex = -1;
     this.clearTimers();
 
+    if (this.narrator) {
+      this.narrator.stopAll();
+      if (this.narrator.subtitleOverlay) {
+        this.narrator.subtitleOverlay.setDockLayout('cinematic');
+      }
+    }
+
     this.el.hidden = false;
     this.renderCinematicWaiting();
 
     // Sync dialogue beats with door handle turn (0.0-0.8s), door swing + warden entry (0.8-2.3s), notice player (2.4s+)
     this.timers.push(window.setTimeout(() => this.showDialogueStep(0), 2300));
-    this.timers.push(window.setTimeout(() => this.showDialogueStep(1), 5200));
-    this.timers.push(window.setTimeout(() => this.showDialogueStep(2), 7500));
-    this.timers.push(window.setTimeout(() => this.showGameOver(), 10200));
+    this.timers.push(window.setTimeout(() => this.showDialogueStep(1), 5800));
+    this.timers.push(window.setTimeout(() => this.showDialogueStep(2), 8400));
+    this.timers.push(window.setTimeout(() => this.showGameOver(), 11600));
   }
 
   renderCinematicWaiting() {
     this.el.innerHTML = `
-      <div class="warden-dialogue-banner" role="status" aria-live="polite">
+      <div class="warden-dialogue-banner compact-top" role="status" aria-live="polite">
         <div class="warden-speaker">CURFEW EXPIRED</div>
         <div class="warden-line">Footsteps stop outside Room 13... the brass handle turns.</div>
       </div>
@@ -81,17 +92,39 @@ export class WardenEndingOverlay {
       return;
     }
 
-    this.el.innerHTML = `
-      <div class="warden-dialogue-banner" role="dialog" aria-live="polite">
-        <div class="warden-dialogue-top">
-          <span class="warden-speaker ${entry.speaker === 'Warden' ? 'warden-tag' : 'player-tag'}">${entry.speaker}</span>
-          <button id="warden-next-btn" type="button" class="r13-icon-btn">
-            ${idx < WARDEN_LINES.length - 1 ? 'Next' : 'Continue'}
-          </button>
+    if (this.narrator) {
+      this.narrator.narrateWardenLine(entry.narratorSpeaker, entry.text);
+    }
+
+    const subtitlesShowing = Boolean(this.narrator && this.narrator.subtitlesEnabled);
+
+    if (subtitlesShowing) {
+      // Single unified subtitle box is rendered by SubtitleOverlay — keep only a sleek non-overlapping control bar
+      this.el.innerHTML = `
+        <div class="warden-dialogue-banner compact-top" role="dialog" aria-live="off">
+          <div class="warden-dialogue-top">
+            <span class="warden-speaker ${entry.speaker === 'Warden' ? 'warden-tag' : 'player-tag'}">
+              WARDEN INSPECTION · ${entry.speaker} Speaking
+            </span>
+            <button id="warden-next-btn" type="button" class="r13-icon-btn">
+              ${idx < WARDEN_LINES.length - 1 ? 'Next' : 'Continue'}
+            </button>
+          </div>
         </div>
-        <div class="warden-line">"${entry.text}"</div>
-      </div>
-    `;
+      `;
+    } else {
+      this.el.innerHTML = `
+        <div class="warden-dialogue-banner" role="dialog" aria-live="polite">
+          <div class="warden-dialogue-top">
+            <span class="warden-speaker ${entry.speaker === 'Warden' ? 'warden-tag' : 'player-tag'}">${entry.speaker}</span>
+            <button id="warden-next-btn" type="button" class="r13-icon-btn">
+              ${idx < WARDEN_LINES.length - 1 ? 'Next' : 'Continue'}
+            </button>
+          </div>
+          <div class="warden-line">"${entry.text}"</div>
+        </div>
+      `;
+    }
 
     const nextBtn = this.el.querySelector('#warden-next-btn');
     if (nextBtn) {
@@ -107,7 +140,7 @@ export class WardenEndingOverlay {
               } else {
                 this.showDialogueStep(idx + 2);
               }
-            }, 2600)
+            }, 3000)
           );
         } else {
           this.showGameOver();
@@ -121,6 +154,9 @@ export class WardenEndingOverlay {
     this.clearTimers();
     if (this.sound) {
       this.sound.playWardenFailureCue();
+    }
+    if (this.narrator) {
+      this.narrator.narrateWardenCaught();
     }
     const snap = this.snapshot || {};
 
@@ -178,5 +214,8 @@ export class WardenEndingOverlay {
     this.snapshot = null;
     this.el.hidden = true;
     this.el.innerHTML = '';
+    if (this.narrator && this.narrator.subtitleOverlay) {
+      this.narrator.subtitleOverlay.setDockLayout('room');
+    }
   }
 }
